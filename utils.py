@@ -1,6 +1,5 @@
 from more_itertools import islice_extended
 from pathlib import Path
-from enum import Enum
 from dataclasses import dataclass
 
 
@@ -29,12 +28,17 @@ def read_rows(
 class Proxy:
     proxy_type: Optional[str|ProxyType] = None
     host: Optional[str] = None
-    port: Optional[int] = None
+    port: Optional[str] = None
     username:Optional[str] = None
     password: Optional[str] = None
+    status: bool = False
+    timeout:Optional[float] = None
+    anonymous: Optional[bool] = None
     
     def __post_init__(self):
         match self.proxy_type:
+            # case ProxyType():
+            #     pass
             case 'socks5':
                 self.proxy_type = ProxyType.SOCKS5
             case 'socks4':
@@ -43,6 +47,20 @@ class Proxy:
                 self.proxy_type = ProxyType.HTTP
             case _:
                 self.proxy_type = None
+
+    # __str__(self)
+    def proxy_string(self):
+        match self:
+            case Proxy(proxy_type, host, port, username, passwrod) \
+                if isinstance(proxy_type, ProxyType) and username and passwrod and host and port:
+                    return f"{proxy_type.name.lower()}://{username}:{passwrod}@{host}:{port}"
+
+            case Proxy(proxy_type, host, port, username=None, password=None) \
+                if isinstance(proxy_type, ProxyType) and host and port:
+                    return f"{proxy_type.name.lower()}://{host}:{port}"
     
-    def set_status(self, status):
-       setattr(self, 'status', status)
+    def print_log_result(self):
+        match self:
+            case Proxy(timeout, status=True) if timeout:
+                print(self.proxy_string(), timeout)
+

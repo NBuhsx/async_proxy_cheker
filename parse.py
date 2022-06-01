@@ -15,7 +15,7 @@ judges_by_proxy = (
 
 
 @dataclass(slots=True)
-class Searhc:
+class ParseProxyPattern:
     proxy_type = re.compile(r'(\w+)://')
     host = re.compile(r'(\d+.\d+.\d+.\d+)')
     port = re.compile(r'\d+.\d+.\d+.\d+:(\d+)')
@@ -23,12 +23,12 @@ class Searhc:
     password = re.compile(r':(\w+)@')
 
 
-def parse_proxy_url(search_compile:re.Pattern, proxy_url:str):
-    if search := search_compile.search(proxy_url):
+def parse_search(search_compile:re.Pattern, string:str) -> str|None:
+    if search := search_compile.search(string):
         return search.group(1)
 
 
 
-class RequestSerch:
+@dataclass(slots=True)
+class ResponseSerch:
     host = re.compile(r'REMOTE_ADDR = (\d+.\d+.\d+.\d+)')
-    timeout = re.compile(r'REQUEST_TIME = (\d+)')

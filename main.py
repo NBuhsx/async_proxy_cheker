@@ -10,50 +10,53 @@ from aiohttp_socks import ProxyConnector, ProxyType
 from typing import Iterable
 
 from utils import read_rows, Proxy
-from parse import Searhc, parse_proxy_url, judges_by_proxy
+from parse import ParseProxyPattern, parse_search, judges_by_proxy, ResponseSerch
 
 
 
 
-async def check(session:ClientSession):
-    async with session.get(
-        url=random.choice(judges_by_proxy), 
-        headers= {
-            'User-Agent': generate_user_agent()},
-        timeout=15) as response:
-        return response
-            
-
-
-
-async def choice_proxy_type(proxy:Proxy):
-    if proxy.proxy_type:
-        try: 
-            async with ClientSession(connector=ProxyConnector(
+async def check(proxy:Proxy) -> Proxy|None:
+    async with ClientSession(connector=ProxyConnector(
                 proxy_type=proxy.proxy_type,
                 host=proxy.host,
                 port=proxy.port,
                 username=proxy.username,
                 password=proxy.password)) as session:
+        start_time = time.perf_counter()
+        async with session.get(
+            url=random.choice(judges_by_proxy), 
+            headers= {
+                'User-Agent': generate_user_agent()},
+            timeout=15) as response:
+            if response.ok:
+                proxy.status = True
+                html_obj = (await response.text())
+                proxy.timeout = time.perf_counter() - start_time
 
-                await check(session=session)
+                if ip := parse_search(ResponseSerch.host, html_obj):
+                    proxy.anonymous = True if proxy.host == ip else False
+                print(proxy.print_log_result())
+            return proxy
+
+
+async def choice_proxy_type(proxy:Proxy):
+    if proxy.proxy_type:
+        try: 
+            return await check(proxy=proxy)
         except Exception:
-            return proxy.set_status(status='BAD')
+            proxy.status = False
+            print(proxy)
+            return proxy
     else:
         for proxy_type in ProxyType:
             try:
-                async with ClientSession(connector=ProxyConnector(
-                    proxy_type=proxy_type,
-                    host=proxy.host,
-                    port=proxy.port,
-                    username=proxy.username,
-                    password=proxy.password)) as session:
-
-                    response = await check(session=session)
-                    print(response)
+                proxy.proxy_type = proxy_type
+                return await check(proxy=proxy)
             except Exception as error:
                 continue
-        return proxy.set_status(status='BAD')
+        proxy.status = False
+        print(proxy)
+        return proxy
 
 
 
@@ -62,14 +65,14 @@ async def soft(proxy_iters:Iterable):
     for proxy in proxy_iters:
         task = asyncio.create_task(
             choice_proxy_type(proxy=Proxy(
-                    proxy_type=parse_proxy_url(Searhc.proxy_type, proxy),
-                    host=parse_proxy_url(Searhc.host, proxy),
-                    port=parse_proxy_url(Searhc.port, proxy),
-                    username=parse_proxy_url(Searhc.username, proxy),
-                    password=parse_proxy_url(Searhc.password, proxy))))
+                    proxy_type=parse_search(ParseProxyPattern.proxy_type, proxy),
+                    host=parse_search(ParseProxyPattern.host, proxy),
+                    port=parse_search(ParseProxyPattern.port, proxy),
+                    username=parse_search(ParseProxyPattern.username, proxy),
+                    password=parse_search(ParseProxyPattern.password, proxy))))
         tasks.append(task)
-    await asyncio.gather(*tasks)
-   
+    result = await asyncio.gather(*tasks)
+
    
    
 def main():

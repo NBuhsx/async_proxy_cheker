@@ -1,0 +1,4 @@
+aiohttp==3.8.1
+aiohttp-socks==0.7.1
+user-agent==0.1.10
+more-itertools==8.12.0
