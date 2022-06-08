@@ -2,6 +2,7 @@ import os
 import time
 import random
 import asyncio
+import colorama
 
 from user_agent.base import generate_user_agent
 from aiohttp import ClientSession
@@ -9,8 +10,10 @@ from aiohttp_socks import ProxyConnector, ProxyType
 
 from typing import Iterable
 
-from utils import read_rows, Proxy
+from utils import Proxy
 from parse import ParseProxyPattern, parse_search, judges_by_proxy, ResponseSerch
+from read_write import read_rows
+
 
 
 
@@ -35,7 +38,7 @@ async def check(proxy:Proxy) -> Proxy|None:
 
                 if ip := parse_search(ResponseSerch.host, html_obj):
                     proxy.anonymous = True if proxy.host == ip else False
-                print(proxy.print_log_result())
+                proxy.print_log_result()
             return proxy
 
 
@@ -45,7 +48,7 @@ async def choice_proxy_type(proxy:Proxy):
             return await check(proxy=proxy)
         except Exception:
             proxy.status = False
-            print(proxy)
+            proxy.print_log_result()
             return proxy
     else:
         for proxy_type in ProxyType:
@@ -55,7 +58,7 @@ async def choice_proxy_type(proxy:Proxy):
             except Exception as error:
                 continue
         proxy.status = False
-        print(proxy)
+        proxy.print_log_result()
         return proxy
 
 
@@ -78,9 +81,9 @@ async def soft(proxy_iters:Iterable):
 def main():
     start = time.time()
     asyncio.run(soft(proxy_iters=read_rows(
-            pathfile=os.path.dirname(os.path.abspath(__file__)) + '/check.txt')
-    ))
-    print(f'Время работы: {time.time() - start}')
+            pathfile=os.path.dirname(os.path.abspath(__file__)) + '/check.txt')))
+    print(f'{colorama.Fore.CYAN + "Время работы" + colorama.Fore.YELLOW + ":"}\
+ {colorama.Fore.MAGENTA + str(time.time() - start)}' + colorama.Fore.RESET)
 
 
 if __name__ == '__main__':

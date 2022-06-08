@@ -1,32 +1,15 @@
-from more_itertools import islice_extended
-from pathlib import Path
-from dataclasses import dataclass
-
-
-from typing import Callable, Generator, Any, Iterable, Optional, Literal
+from dataclasses import dataclass, InitVar
 from aiohttp_socks import ProxyType
-
-#Читает прокси
-def read_rows(
-        pathfile:str|Path, 
-        templete:Optional[Callable[[str], Any]]=None, 
-        mode:Literal['r', 'rb']='r', 
-        islice:slice=slice(0,None,1), 
-        encoding:str='utf-8') -> Generator[str | Any, None, None]:
-    """Возращает генератор по строчно"""
-    with open(file=pathfile, mode=mode, encoding=encoding) as file:
-        for row in islice_extended(file)[islice]:
-            try:
-                yield templete(row) if templete else row
-            except GeneratorExit:
-                break
-            except:
-                continue
+from typing import Optional
+from colorama import Fore
 
 
-@dataclass
+
+
+
+@dataclass(slots=False)
 class Proxy:
-    proxy_type: Optional[str|ProxyType] = None
+    proxy_type : InitVar[Optional[ProxyType|str]] = None
     host: Optional[str] = None
     port: Optional[str] = None
     username:Optional[str] = None
@@ -35,10 +18,10 @@ class Proxy:
     timeout:Optional[float] = None
     anonymous: Optional[bool] = None
     
-    def __post_init__(self):
-        match self.proxy_type:
-            # case ProxyType():
-            #     pass
+    def __post_init__(self, pr):
+        match pr:
+            case ProxyType():
+                self.proxy_type = pr
             case 'socks5':
                 self.proxy_type = ProxyType.SOCKS5
             case 'socks4':
@@ -48,19 +31,31 @@ class Proxy:
             case _:
                 self.proxy_type = None
 
-    # __str__(self)
-    def proxy_string(self):
-        match self:
-            case Proxy(proxy_type, host, port, username, passwrod) \
-                if isinstance(proxy_type, ProxyType) and username and passwrod and host and port:
-                    return f"{proxy_type.name.lower()}://{username}:{passwrod}@{host}:{port}"
 
-            case Proxy(proxy_type, host, port, username=None, password=None) \
+    # __str__(self)
+    def proxy_string(self) -> str:
+        match self:
+            case Proxy(proxy_type, host, port, username=None, password=None):
                 if isinstance(proxy_type, ProxyType) and host and port:
                     return f"{proxy_type.name.lower()}://{host}:{port}"
+
+            case Proxy(proxy_type, host, port, username, password=None):
+                if isinstance(proxy_type, ProxyType) and username and host and port:
+                    return f"{proxy_type.name.lower()}://{host}:{port}"
+
+            case Proxy(proxy_type, host, port, username, passwrod) \
+                if isinstance(proxy_type, ProxyType) and username and passwrod and host and port:
+                    return f"{proxy_type.name.lower()}://{username}:{passwrod}@{host}:{port}"   
+        return f"{self.host}:{self.port}"
+      
     
+
     def print_log_result(self):
         match self:
-            case Proxy(timeout, status=True) if timeout:
-                print(self.proxy_string(), timeout)
-
+            case Proxy(status=True):
+                print(f"{Fore.GREEN + self.proxy_string()}   {Fore.BLUE + 'status='}{Fore.GREEN + str(self.status)}\
+    {Fore.BLUE + 'timeout='}{Fore.MAGENTA + str(self.timeout) if self.timeout else Fore.MAGENTA + str(None)}\
+    {Fore.BLUE + 'anonymous='}{Fore.MAGENTA + str(self.anonymous) if self.anonymous else Fore.MAGENTA + 'False'}" + Fore.RESET)
+               
+            case Proxy(status=False):
+                print(f"{Fore.RED + self.proxy_string() + Fore.RESET}   {Fore.BLUE + 'status'}={Fore.RED + str(self.status)}" + Fore.RESET)
